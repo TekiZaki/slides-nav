@@ -22,7 +22,7 @@ class GestureAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        
+
         setupEdgeOverlays()
     }
 
@@ -103,7 +103,7 @@ class GestureAccessibilityService : AccessibilityService() {
         val maxVolume = audioManager.getStreamMaxVolume(streamType)
         val step = if (increase) 1 else -1
         val targetVolume = (currentVolume + step).coerceIn(0, maxVolume)
-        
+
         audioManager.setStreamVolume(streamType, targetVolume, AudioManager.FLAG_SHOW_UI)
     }
 
@@ -116,4 +116,3 @@ class GestureAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
     override fun onInterrupt() {}
 }
-=======

@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">Slides Navigation</string>
-    <string name="accessibility_service_description">This service provides edge-sliding gestures along the left and right side of the screen to adjust device volume dynamically.</string>
+    <string
+        name="accessibility_service_description"
+    >This service provides edge-sliding gestures along the left and right side of the screen to adjust device volume dynamically.</string>
 </resources>
-=======
