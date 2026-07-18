@@ -12,3 +12,4 @@ Anti Generic UI styles, use simple and modern UI, not generic AI/Colorful UI sty
 - Configured GitHub Actions Workflow: Set up a workflow for manual trigger compiles.
 - Created background Overlay & Gesture logic using Android's AccessibilityService framework and WindowManager overlays.
 - Created Main Settings Activity with modern, clean, dark-themed Jetpack Compose UI without overdesigned, colorful gradients.
+- Fixed GitHub Actions path error by removing incorrect `./slides-nav` working directory configurations and updating the APK artifact upload path.
