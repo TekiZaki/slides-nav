@@ -17,5 +17,6 @@ Anti Generic UI styles, use simple and modern UI, not generic AI/Colorful UI sty
 - - Resolved Kotlin DSL compilation errors in app/build.gradle.kts by refactoring hyphenated Version Catalog alias names (e.g. replacing '-' with '.' and ensuring correct accessor syntax).
 - Created gradle.properties to enable android.useAndroidX=true to resolve the checkDebugAarMetadata task build failure.
 - Created default application launcher icons (ic_launcher and ic_launcher_round) along with a minimalist vector foreground drawable to resolve the AAPT missing resource build failure.
-- - Migrated gesture overlays to a modern floating control dock with quick volume circles and an expandable utility menu containing clean, hand-crafted vector drawings for screenshot, flashlight, and lock screen actions.
+- Migrated gesture overlays to a modern floating control dock with quick volume circles and an expandable utility menu containing clean, hand-crafted vector drawings for screenshot, flashlight, and lock screen actions.
 - Implemented smooth, jitter-free dragging for the floating control dock using raw absolute screen coordinates from the underlying MotionEvents to prevent visual stuttering.
+- Fixed a Kotlin compilation error by importing the public extension property motionEvent on PointerEvent in FloatingControl.kt.
