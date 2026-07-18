@@ -58,7 +58,8 @@ Anti Generic UI styles, use simple and modern UI, not generic AI/Colorful UI sty
 - Configured GitHub Actions Workflow: Set up a workflow for manual trigger compiles.
 - Created background Overlay & Gesture logic using Android's AccessibilityService framework and WindowManager overlays.
 - Created Main Settings Activity with modern, clean, dark-themed Jetpack Compose UI without overdesigned, colorful gradients.
-- Fixed GitHub Actions path error by removing incorrect `./slides-nav` working directory configurations and updating the APK artifact upload path.
+- Fixed GitHub Actions path error by removing incorrect ./slides-nav working directory configurations and updating the APK artifact upload path.
+- Fixed Gradlew missing error in GitHub Actions by setting up Gradle 8.5 via gradle/actions/setup-gradle and running the build with the system-installed gradle instead of a wrapper script.
 
 ## slides-nav/build.gradle.kts (5 lines)
 
@@ -93,7 +94,7 @@ include(":app")
 
 ```
 
-## slides-nav/.github/workflows/build.yml (33 lines)
+## slides-nav/.github/workflows/build.yml (34 lines)
 
 ```yaml
 name: Android Build Workflow
@@ -115,13 +116,14 @@ jobs:
         with:
           distribution: "temurin"
           java-version: "17"
-          cache: "gradle"
 
-      - name: Grant Execute Permission to Gradlew
-        run: chmod +x gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.5'
 
       - name: Run AssembleDebug Build
-        run: ./gradlew assembleDebug --no-daemon
+        run: gradle assembleDebug --no-daemon
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
