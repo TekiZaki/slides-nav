@@ -60,7 +60,8 @@ Anti Generic UI styles, use simple and modern UI, not generic AI/Colorful UI sty
 - Created Main Settings Activity with modern, clean, dark-themed Jetpack Compose UI without overdesigned, colorful gradients.
 - Fixed GitHub Actions path error by removing incorrect ./slides-nav working directory configurations and updating the APK artifact upload path.
 - Fixed Gradlew missing error in GitHub Actions by setting up Gradle 8.5 via gradle/actions/setup-gradle and running the build with the system-installed gradle instead of a wrapper script.
-- Resolved Kotlin DSL compilation errors in app/build.gradle.kts by refactoring hyphenated Version Catalog alias names (e.g. replacing '-' with '.' and ensuring correct accessor syntax).
+- - Resolved Kotlin DSL compilation errors in app/build.gradle.kts by refactoring hyphenated Version Catalog alias names (e.g. replacing '-' with '.' and ensuring correct accessor syntax).
+- Created gradle.properties to enable android.useAndroidX=true to resolve the checkDebugAarMetadata task build failure.
 
 ## slides-nav/build.gradle.kts (5 lines)
 
@@ -70,6 +71,13 @@ plugins {
     alias(libs.plugins.kotlin.android) version "1.9.22" apply false
 }
 
+```
+
+## slides-nav/gradle.properties (2 lines)
+
+```text
+# Enable AndroidX support
+android.useAndroidX=true
 ```
 
 ## slides-nav/settings.gradle.kts (18 lines)
