@@ -2,5 +2,5 @@
     <string name="app_name">Slides Navigation</string>
     <string
         name="accessibility_service_description"
-    >This service provides edge-sliding gestures along the left and right side of the screen to adjust device volume dynamically.</string>
+    >This service provides a minimalist floating control dock with quick volume buttons and an expandable utility features menu.</string>
 </resources>

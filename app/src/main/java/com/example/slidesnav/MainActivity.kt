@@ -74,7 +74,7 @@ fun MainScreen(onOpenSettings: () -> Unit) {
             )
 
             Text(
-                text = "Control system actions globally by sliding vertically along the screen's left or right borders.",
+                text = "Control system actions globally using a minimalist floating control dock with quick volume adjustments and a utility features menu.",
                 fontSize = 15.sp,
                 fontFamily = FontFamily.SansSerif,
                 color = MaterialTheme.colorScheme.onSurface,
