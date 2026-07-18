@@ -1,0 +1,59 @@
+{
+    "files": {
+        "agents/instructions.md": {
+            "action": "modify",
+            "original_content": "### Instructions (Always edit this file when making changes to make the instructions accurate)\n\nThis project is about [insert project description]\n\nAnti Emoji, no emoji allowed\n\nAnti Generic UI styles, use simple and modern UI, not generic AI/Colorful UI styles\n\n### List of Changes (Always add new changes here, do not delete any previous changes)\n\nWhat changes have been made?\n",
+            "destination_path": null
+        },
+        "build.gradle.kts": {
+            "action": "create",
+            "original_content": null,
+            "destination_path": null
+        },
+        "settings.gradle.kts": {
+            "action": "create",
+            "original_content": null,
+            "destination_path": null
+        },
+        "gradle/libs.versions.toml": {
+            "action": "create",
+            "original_content": null,
+            "destination_path": null
+        },
+        "app/build.gradle.kts": {
+            "action": "create",
+            "original_content": null,
+            "destination_path": null
+        },
+        "app/src/main/AndroidManifest.xml": {
+            "action": "create",
+            "original_content": null,
+            "destination_path": null
+        },
+        "app/src/main/res/xml/accessibility_service_config.xml": {
+            "action": "create",
+            "original_content": null,
+            "destination_path": null
+        },
+        "app/src/main/res/values/strings.xml": {
+            "action": "create",
+            "original_content": null,
+            "destination_path": null
+        },
+        "app/src/main/java/com/example/slidesnav/GestureAccessibilityService.kt": {
+            "action": "create",
+            "original_content": null,
+            "destination_path": null
+        },
+        "app/src/main/java/com/example/slidesnav/MainActivity.kt": {
+            "action": "create",
+            "original_content": null,
+            "destination_path": null
+        },
+        ".github/workflows/build.yml": {
+            "action": "create",
+            "original_content": null,
+            "destination_path": null
+        }
+    }
+}
