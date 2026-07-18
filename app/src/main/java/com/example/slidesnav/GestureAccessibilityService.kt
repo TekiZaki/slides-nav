@@ -79,11 +79,13 @@ class GestureAccessibilityService : AccessibilityService(), LifecycleOwner, Save
             setViewTreeViewModelStoreOwner(this@GestureAccessibilityService)
             setContent {
                 FloatingControl(
-                    onDrag = { dx, dy ->
-                        params.x = params.x + dx
-                        params.y = params.y + dy
+                    currentX = { params.x },
+                    currentY = { params.y },
+                    onDrag = { newX, newY ->
+                        params.x = newX
+                        params.y = newY
                         try {
-                            windowManager.updateViewLayout(this, params)
+                            windowManager.updateViewLayout(composeView, params)
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }

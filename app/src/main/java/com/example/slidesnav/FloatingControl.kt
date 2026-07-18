@@ -1,9 +1,9 @@
 package com.example.slidesnav
 
+import android.view.MotionEvent
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,7 +26,9 @@ enum class FloatingAction {
 
 @Composable
 fun FloatingControl(
-    onDrag: (dx: Int, dy: Int) -> Unit,
+    currentX: () -> Int,
+    currentY: () -> Int,
+    onDrag: (newX: Int, newY: Int) -> Unit,
     onVolumeUp: () -> Unit,
     onVolumeDown: () -> Unit,
     onAction: (FloatingAction) -> Unit
@@ -95,15 +97,35 @@ fun FloatingControl(
                 .padding(8.dp)
         ) {
             // Drag Handle - minimalist rectangular vertical bar
+            var initialX by remember { mutableStateOf(0) }
+            var initialY by remember { mutableStateOf(0) }
+            var initialTouchX by remember { mutableStateOf(0f) }
+            var initialTouchY by remember { mutableStateOf(0f) }
+
             Box(
                 modifier = Modifier
                     .width(12.dp)
                     .height(60.dp)
                     .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(6.dp))
                     .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            onDrag(dragAmount.x.toInt(), dragAmount.y.toInt())
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val nativeEvent = event.motionEvent ?: continue
+                                when (nativeEvent.action) {
+                                    MotionEvent.ACTION_DOWN -> {
+                                        initialX = currentX()
+                                        initialY = currentY()
+                                        initialTouchX = nativeEvent.rawX
+                                        initialTouchY = nativeEvent.rawY
+                                    }
+                                    MotionEvent.ACTION_MOVE -> {
+                                        val dx = (nativeEvent.rawX - initialTouchX).toInt()
+                                        val dy = (nativeEvent.rawY - initialTouchY).toInt()
+                                        onDrag(initialX + dx, initialY + dy)
+                                    }
+                                }
+                            }
                         }
                     }
             )
