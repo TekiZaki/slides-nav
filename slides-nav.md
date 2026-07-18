@@ -58,6 +58,7 @@ Anti Generic UI styles, use simple and modern UI, not generic AI/Colorful UI sty
 - Configured GitHub Actions Workflow: Set up a workflow for manual trigger compiles.
 - Created background Overlay & Gesture logic using Android's AccessibilityService framework and WindowManager overlays.
 - Created Main Settings Activity with modern, clean, dark-themed Jetpack Compose UI without overdesigned, colorful gradients.
+- Fixed GitHub Actions path error by removing incorrect `./slides-nav` working directory configurations and updating the APK artifact upload path.
 
 ## slides-nav/build.gradle.kts (5 lines)
 
@@ -92,7 +93,7 @@ include(":app")
 
 ```
 
-## slides-nav/.github/workflows/build.yml (35 lines)
+## slides-nav/.github/workflows/build.yml (33 lines)
 
 ```yaml
 name: Android Build Workflow
@@ -118,17 +119,47 @@ jobs:
 
       - name: Grant Execute Permission to Gradlew
         run: chmod +x gradlew
-        working-directory: ./slides-nav
 
       - name: Run AssembleDebug Build
         run: ./gradlew assembleDebug --no-daemon
-        working-directory: ./slides-nav
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
-          path: slides-nav/app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+```
+
+## slides-nav/.gradle/9.3.0/gc.properties (1 lines)
+
+```text
+
+```
+
+## slides-nav/.gradle/9.3.0/checksums/md5-checksums.bin
+
+*Binary file skipped (contains null bytes)*
+
+## slides-nav/.gradle/9.3.0/checksums/sha1-checksums.bin
+
+*Binary file skipped (contains null bytes)*
+
+## slides-nav/.gradle/9.3.0/fileChanges/last-build.bin
+
+*Binary file skipped (contains null bytes)*
+
+## slides-nav/.gradle/buildOutputCleanup/cache.properties (3 lines)
+
+```text
+#Sat Jul 18 19:05:21 WIB 2026
+gradle.version=9.3.0
+
+```
+
+## slides-nav/.gradle/vcs-1/gc.properties (1 lines)
+
+```text
 
 ```
 
