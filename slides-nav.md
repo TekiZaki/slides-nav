@@ -46,7 +46,7 @@ To delete a file or folder (Delete workaround):
 
 ### Instructions (Always edit this file when making changes to make the instructions accurate)
 
-This project is an Android application written in Kotlin designed to run in the background. It allows users to swipe or slide along the left or right edges of the screen to adjust the system volume and perform other customizable actions.
+This project is an Android application written in Kotlin designed to run in the background. It displays a minimalist, dark-themed floating controller dock matching a wireframe layout (a vertical handle alongside three vertically stacked circles: Volume Up, Menu Toggle, and Volume Down) that allows users to adjust device volume and open an expandable utility menu to perform system actions like taking screenshots, toggling the flashlight, or locking the screen.
 
 Anti Emoji, no emoji allowed
 
@@ -62,6 +62,10 @@ Anti Generic UI styles, use simple and modern UI, not generic AI/Colorful UI sty
 - Fixed Gradlew missing error in GitHub Actions by setting up Gradle 8.5 via gradle/actions/setup-gradle and running the build with the system-installed gradle instead of a wrapper script.
 - - Resolved Kotlin DSL compilation errors in app/build.gradle.kts by refactoring hyphenated Version Catalog alias names (e.g. replacing '-' with '.' and ensuring correct accessor syntax).
 - Created gradle.properties to enable android.useAndroidX=true to resolve the checkDebugAarMetadata task build failure.
+- Created default application launcher icons (ic_launcher and ic_launcher_round) along with a minimalist vector foreground drawable to resolve the AAPT missing resource build failure.
+- Migrated gesture overlays to a modern floating control dock with quick volume circles and an expandable utility menu containing clean, hand-crafted vector drawings for screenshot, flashlight, and lock screen actions.
+- Implemented smooth, jitter-free dragging for the floating control dock using raw absolute screen coordinates from the underlying MotionEvents to prevent visual stuttering.
+- Fixed a Kotlin compilation error by importing the public extension property motionEvent on PointerEvent in FloatingControl.kt.
 
 ## slides-nav/build.gradle.kts (5 lines)
 
@@ -275,106 +279,413 @@ dependencies {
 
 ```
 
-## slides-nav/app/src/main/java/com/example/slidesnav/GestureAccessibilityService.kt (119 lines)
+## slides-nav/app/src/main/java/com/example/slidesnav/FloatingControl.kt (293 lines)
+
+```kotlin
+package com.example.slidesnav
+
+import android.view.MotionEvent
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.motionEvent
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+enum class FloatingAction {
+    SCREENSHOT,
+    FLASHLIGHT,
+    SCREEN_OFF
+}
+
+@Composable
+fun FloatingControl(
+    currentX: () -> Int,
+    currentY: () -> Int,
+    onDrag: (newX: Int, newY: Int) -> Unit,
+    onVolumeUp: () -> Unit,
+    onVolumeDown: () -> Unit,
+    onAction: (FloatingAction) -> Unit
+) {
+    var isMenuExpanded by remember { mutableStateOf(false) }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(8.dp)
+    ) {
+        // Expandable Menu tray (appears on the left side of the controller when expanded)
+        AnimatedVisibility(
+            visible = isMenuExpanded,
+            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+        ) {
+            Row(
+                modifier = Modifier
+                    .background(Color(0xFF1E1E1E), shape = RoundedCornerShape(12.dp))
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Feature 1: Screenshot
+                MenuIconButton(
+                    label = "Snap",
+                    onClick = {
+                        isMenuExpanded = false
+                        onAction(FloatingAction.SCREENSHOT)
+                    }
+                ) {
+                    ScreenshotIcon(Color.White)
+                }
+
+                // Feature 2: Flashlight
+                MenuIconButton(
+                    label = "Torch",
+                    onClick = {
+                        isMenuExpanded = false
+                        onAction(FloatingAction.FLASHLIGHT)
+                    }
+                ) {
+                    FlashlightIcon(Color.White)
+                }
+
+                // Feature 3: Screen Off
+                MenuIconButton(
+                    label = "Lock",
+                    onClick = {
+                        isMenuExpanded = false
+                        onAction(FloatingAction.SCREEN_OFF)
+                    }
+                ) {
+                    ScreenOffIcon(Color.White)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Main Controller Dock matching wireframe layout
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .background(Color(0xBB000000), shape = RoundedCornerShape(16.dp))
+                .padding(8.dp)
+        ) {
+            // Drag Handle - minimalist rectangular vertical bar
+            var initialX by remember { mutableStateOf(0) }
+            var initialY by remember { mutableStateOf(0) }
+            var initialTouchX by remember { mutableStateOf(0f) }
+            var initialTouchY by remember { mutableStateOf(0f) }
+
+            Box(
+                modifier = Modifier
+                    .width(12.dp)
+                    .height(60.dp)
+                    .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(6.dp))
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val nativeEvent = event.motionEvent ?: continue
+                                when (nativeEvent.action) {
+                                    MotionEvent.ACTION_DOWN -> {
+                                        initialX = currentX()
+                                        initialY = currentY()
+                                        initialTouchX = nativeEvent.rawX
+                                        initialTouchY = nativeEvent.rawY
+                                    }
+                                    MotionEvent.ACTION_MOVE -> {
+                                        val dx = (nativeEvent.rawX - initialTouchX).toInt()
+                                        val dy = (nativeEvent.rawY - initialTouchY).toInt()
+                                        onDrag(initialX + dx, initialY + dy)
+                                    }
+                                }
+                            }
+                        }
+                    }
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Vertically stacked circles (Volume Up, Main Menu Toggle, Volume Down)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Volume Up button (Top small circle)
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(Color(0xFF333333), shape = CircleShape)
+                        .clickable { onVolumeUp() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("+", color = Color.White, fontSize = 16.sp)
+                }
+
+                // Main Menu button (Middle larger circle)
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(Color(0xFFE0E0E0), shape = CircleShape)
+                        .clickable { isMenuExpanded = !isMenuExpanded },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .drawBehind {
+                                drawCircle(
+                                    color = Color.Black,
+                                    radius = size.width / 2,
+                                    style = Stroke(width = 2.dp.toPx())
+                                )
+                                drawCircle(
+                                    color = Color.Black,
+                                    radius = 2.dp.toPx()
+                                )
+                            }
+                    )
+                }
+
+                // Volume Down button (Bottom small circle)
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(Color(0xFF333333), shape = CircleShape)
+                        .clickable { onVolumeDown() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("-", color = Color.White, fontSize = 16.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MenuIconButton(
+    label: String,
+    onClick: () -> Unit,
+    iconContent: @Composable () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable { onClick() }
+            .padding(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(Color(0xFF2E2E2E), shape = CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            iconContent()
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            color = Color(0xFFCCCCCC),
+            fontSize = 11.sp
+        )
+    }
+}
+
+@Composable
+fun ScreenshotIcon(color: Color) {
+    Box(
+        modifier = Modifier
+            .size(20.dp)
+            .drawBehind {
+                val strokeWidth = 2.dp.toPx()
+                val sizePx = size.width
+
+                drawLine(color, start = androidx.compose.ui.geometry.Offset(0f, 0f), end = androidx.compose.ui.geometry.Offset(6.dp.toPx(), 0f), strokeWidth = strokeWidth)
+                drawLine(color, start = androidx.compose.ui.geometry.Offset(0f, 0f), end = androidx.compose.ui.geometry.Offset(0f, 6.dp.toPx()), strokeWidth = strokeWidth)
+
+                drawLine(color, start = androidx.compose.ui.geometry.Offset(sizePx, sizePx), end = androidx.compose.ui.geometry.Offset(sizePx - 6.dp.toPx(), sizePx), strokeWidth = strokeWidth)
+                drawLine(color, start = androidx.compose.ui.geometry.Offset(sizePx, sizePx), end = androidx.compose.ui.geometry.Offset(sizePx, sizePx - 6.dp.toPx()), strokeWidth = strokeWidth)
+
+                drawCircle(color, radius = 3.dp.toPx())
+            }
+    )
+}
+
+@Composable
+fun FlashlightIcon(color: Color) {
+    Box(
+        modifier = Modifier
+            .size(20.dp)
+            .drawBehind {
+                val strokeWidth = 2.dp.toPx()
+
+                drawRect(
+                    color = color,
+                    topLeft = androidx.compose.ui.geometry.Offset(size.width / 2 - 3.dp.toPx(), size.height / 2),
+                    size = androidx.compose.ui.geometry.Size(6.dp.toPx(), 8.dp.toPx())
+                )
+
+                drawRect(
+                    color = color,
+                    topLeft = androidx.compose.ui.geometry.Offset(size.width / 2 - 6.dp.toPx(), size.height / 2 - 6.dp.toPx()),
+                    size = androidx.compose.ui.geometry.Size(12.dp.toPx(), 6.dp.toPx())
+                )
+
+                drawLine(color, start = androidx.compose.ui.geometry.Offset(size.width / 2 - 8.dp.toPx(), 2.dp.toPx()), end = androidx.compose.ui.geometry.Offset(size.width / 2 - 12.dp.toPx(), 0f), strokeWidth = strokeWidth)
+                drawLine(color, start = androidx.compose.ui.geometry.Offset(size.width / 2, 2.dp.toPx()), end = androidx.compose.ui.geometry.Offset(size.width / 2, 0f), strokeWidth = strokeWidth)
+                drawLine(color, start = androidx.compose.ui.geometry.Offset(size.width / 2 + 8.dp.toPx(), 2.dp.toPx()), end = androidx.compose.ui.geometry.Offset(size.width / 2 + 12.dp.toPx(), 0f), strokeWidth = strokeWidth)
+            }
+    )
+}
+
+@Composable
+fun ScreenOffIcon(color: Color) {
+    Box(
+        modifier = Modifier
+            .size(20.dp)
+            .drawBehind {
+                val strokeWidth = 2.dp.toPx()
+
+                drawArc(
+                    color = color,
+                    startAngle = -240f,
+                    sweepAngle = 300f,
+                    useCenter = false,
+                    topLeft = androidx.compose.ui.geometry.Offset(2.dp.toPx(), 2.dp.toPx()),
+                    size = androidx.compose.ui.geometry.Size(size.width - 4.dp.toPx(), size.height - 4.dp.toPx()),
+                    style = Stroke(width = strokeWidth)
+                )
+                drawLine(
+                    color = color,
+                    start = androidx.compose.ui.geometry.Offset(size.width / 2, 0f),
+                    end = androidx.compose.ui.geometry.Offset(size.width / 2, size.height / 2),
+                    strokeWidth = strokeWidth
+                )
+            }
+    )
+}
+```
+
+## slides-nav/app/src/main/java/com/example/slidesnav/GestureAccessibilityService.kt (156 lines)
 
 ```kotlin
 package com.example.slidesnav
 
 import android.accessibilityservice.AccessibilityService
-import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.PixelFormat
+import android.hardware.camera2.CameraManager
 import android.media.AudioManager
+import android.os.Build
 import android.view.Gravity
-import android.view.MotionEvent
-import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import androidx.compose.ui.platform.ComposeView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
-class GestureAccessibilityService : AccessibilityService() {
+class GestureAccessibilityService : AccessibilityService(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
+
+    private val lifecycleRegistry = LifecycleRegistry(this)
+    private val savedStateRegistryController = SavedStateRegistryController.create(this)
+    private val store = ViewModelStore()
+
+    override val lifecycle: Lifecycle get() = lifecycleRegistry
+    override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
+    override val viewModelStore: ViewModelStore get() = store
 
     private lateinit var windowManager: WindowManager
-    private var leftOverlay: View? = null
-    private var rightOverlay: View? = null
+    private var composeView: ComposeView? = null
     private lateinit var audioManager: AudioManager
+    private lateinit var cameraManager: CameraManager
+    private var isFlashlightOn = false
+
+    override fun onCreate() {
+        super.onCreate()
+        savedStateRegistryController.performRestore(null)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
 
-        setupEdgeOverlays()
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+
+        setupFloatingController()
     }
 
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setupEdgeOverlays() {
-        val overlayWidth = 40 // Touch boundary width in pixels
-
-        // Base layout flags to allow passing touches to underlying elements while capturing slides
+    private fun setupFloatingController() {
         val layoutParamsFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
 
-        // Left Side Overlay configuration
-        val leftParams = WindowManager.LayoutParams(
-            overlayWidth,
-            WindowManager.LayoutParams.MATCH_PARENT,
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             layoutParamsFlags,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.START or Gravity.TOP
+            gravity = Gravity.TOP or Gravity.START
+            x = 100
+            y = 500
         }
 
-        leftOverlay = View(this).apply {
-            setOnTouchListener(GestureTouchListener(true))
-        }
-        windowManager.addView(leftOverlay, leftParams)
-
-        // Right Side Overlay configuration
-        val rightParams = WindowManager.LayoutParams(
-            overlayWidth,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            layoutParamsFlags,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.END or Gravity.TOP
-        }
-
-        rightOverlay = View(this).apply {
-            setOnTouchListener(GestureTouchListener(false))
-        }
-        windowManager.addView(rightOverlay, rightParams)
-    }
-
-    private inner class GestureTouchListener(private val isLeft: Boolean) : View.OnTouchListener {
-        private var startY = 0f
-        private val gestureThreshold = 50f // Minimum movement to count as slide
-
-        override fun onTouch(v: View, event: MotionEvent): Boolean {
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    startY = event.rawY
-                    return true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val currentY = event.rawY
-                    val diffY = startY - currentY
-                    if (kotlin.math.abs(diffY) > gestureThreshold) {
-                        if (diffY > 0) {
-                            adjustVolume(increase = true)
-                        } else {
-                            adjustVolume(increase = false)
+        composeView = ComposeView(this).apply {
+            setViewTreeLifecycleOwner(this@GestureAccessibilityService)
+            setViewTreeSavedStateRegistryOwner(this@GestureAccessibilityService)
+            setViewTreeViewModelStoreOwner(this@GestureAccessibilityService)
+            setContent {
+                FloatingControl(
+                    currentX = { params.x },
+                    currentY = { params.y },
+                    onDrag = { newX, newY ->
+                        params.x = newX
+                        params.y = newY
+                        try {
+                            windowManager.updateViewLayout(composeView, params)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
                         }
-                        // Reset starting frame to allow gradual dragging response
-                        startY = currentY
+                    },
+                    onVolumeUp = { adjustVolume(increase = true) },
+                    onVolumeDown = { adjustVolume(increase = false) },
+                    onAction = { action ->
+                        when (action) {
+                            FloatingAction.SCREENSHOT -> takeScreenshotAction()
+                            FloatingAction.FLASHLIGHT -> toggleFlashlight()
+                            FloatingAction.SCREEN_OFF -> lockScreenAction()
+                        }
                     }
-                    return true
-                }
+                )
             }
-            return false
         }
+
+        windowManager.addView(composeView, params)
     }
 
     private fun adjustVolume(increase: Boolean) {
@@ -383,20 +694,48 @@ class GestureAccessibilityService : AccessibilityService() {
         val maxVolume = audioManager.getStreamMaxVolume(streamType)
         val step = if (increase) 1 else -1
         val targetVolume = (currentVolume + step).coerceIn(0, maxVolume)
-
         audioManager.setStreamVolume(streamType, targetVolume, AudioManager.FLAG_SHOW_UI)
     }
 
+    private fun toggleFlashlight() {
+        try {
+            val cameraId = cameraManager.cameraIdList.getOrNull(0) ?: return
+            isFlashlightOn = !isFlashlightOn
+            cameraManager.setTorchMode(cameraId, isFlashlightOn)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun takeScreenshotAction() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
+        }
+    }
+
+    private fun lockScreenAction() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
+        }
+    }
+
     override fun onDestroy() {
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        composeView?.let {
+            try {
+                windowManager.removeView(it)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
         super.onDestroy()
-        leftOverlay?.let { windowManager.removeView(it) }
-        rightOverlay?.let { windowManager.removeView(it) }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
     override fun onInterrupt() {}
 }
-
 ```
 
 ## slides-nav/app/src/main/java/com/example/slidesnav/MainActivity.kt (104 lines)
@@ -478,7 +817,7 @@ fun MainScreen(onOpenSettings: () -> Unit) {
             )
 
             Text(
-                text = "Control system actions globally by sliding vertically along the screen's left or right borders.",
+                text = "Control system actions globally using a minimalist floating control dock with quick volume adjustments and a utility features menu.",
                 fontSize = 15.sp,
                 fontFamily = FontFamily.SansSerif,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -508,6 +847,46 @@ fun MainScreen(onOpenSettings: () -> Unit) {
 
 ```
 
+## slides-nav/app/src/main/res/drawable/ic_launcher_foreground.xml (15 lines)
+
+```xml
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#E0E0E0"
+        android:pathData="M34,24 L44,24 L44,84 L34,84 Z" />
+    <path
+        android:fillColor="#E0E0E0"
+        android:pathData="M64,24 L74,24 L74,84 L64,84 Z" />
+    <path
+        android:fillColor="#9E9E9E"
+        android:pathData="M48,54 L60,54 L60,56 L48,56 Z" />
+</vector>
+```
+
+## slides-nav/app/src/main/res/mipmap/ic_launcher.xml (5 lines)
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@android:color/black" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
+```
+
+## slides-nav/app/src/main/res/mipmap/ic_launcher_round.xml (5 lines)
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@android:color/black" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
+```
+
 ## slides-nav/app/src/main/res/values/strings.xml (7 lines)
 
 ```xml
@@ -515,7 +894,7 @@ fun MainScreen(onOpenSettings: () -> Unit) {
     <string name="app_name">Slides Navigation</string>
     <string
         name="accessibility_service_description"
-    >This service provides edge-sliding gestures along the left and right side of the screen to adjust device volume dynamically.</string>
+    >This service provides a minimalist floating control dock with quick volume buttons and an expandable utility features menu.</string>
 </resources>
 
 ```

@@ -10,12 +10,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.motionEvent
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -25,6 +25,7 @@ enum class FloatingAction {
     SCREEN_OFF
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun FloatingControl(
     currentX: () -> Int,
@@ -108,25 +109,22 @@ fun FloatingControl(
                     .width(12.dp)
                     .height(60.dp)
                     .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(6.dp))
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val nativeEvent = event.motionEvent ?: continue
-                                when (nativeEvent.action) {
-                                    MotionEvent.ACTION_DOWN -> {
-                                        initialX = currentX()
-                                        initialY = currentY()
-                                        initialTouchX = nativeEvent.rawX
-                                        initialTouchY = nativeEvent.rawY
-                                    }
-                                    MotionEvent.ACTION_MOVE -> {
-                                        val dx = (nativeEvent.rawX - initialTouchX).toInt()
-                                        val dy = (nativeEvent.rawY - initialTouchY).toInt()
-                                        onDrag(initialX + dx, initialY + dy)
-                                    }
-                                }
+                    .pointerInteropFilter { nativeEvent ->
+                        when (nativeEvent.action) {
+                            MotionEvent.ACTION_DOWN -> {
+                                initialX = currentX()
+                                initialY = currentY()
+                                initialTouchX = nativeEvent.rawX
+                                initialTouchY = nativeEvent.rawY
+                                true
                             }
+                            MotionEvent.ACTION_MOVE -> {
+                                val dx = (nativeEvent.rawX - initialTouchX).toInt()
+                                val dy = (nativeEvent.rawY - initialTouchY).toInt()
+                                onDrag(initialX + dx, initialY + dy)
+                                true
+                            }
+                            else -> false
                         }
                     }
             )

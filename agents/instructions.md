@@ -19,4 +19,4 @@ Anti Generic UI styles, use simple and modern UI, not generic AI/Colorful UI sty
 - Created default application launcher icons (ic_launcher and ic_launcher_round) along with a minimalist vector foreground drawable to resolve the AAPT missing resource build failure.
 - Migrated gesture overlays to a modern floating control dock with quick volume circles and an expandable utility menu containing clean, hand-crafted vector drawings for screenshot, flashlight, and lock screen actions.
 - Implemented smooth, jitter-free dragging for the floating control dock using raw absolute screen coordinates from the underlying MotionEvents to prevent visual stuttering.
-- Fixed a Kotlin compilation error by importing the public extension property motionEvent on PointerEvent in FloatingControl.kt.
+- Refactored the drag gesture handling in FloatingControl.kt to use pointerInteropFilter with absolute raw coordinates, resolving the Kotlin compiler error caused by the internal visibility of PointerEvent.motionEvent.
